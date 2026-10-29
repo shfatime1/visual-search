@@ -1,6 +1,52 @@
 # Forma — Visual Search
 
-A local FastAPI application that searches the supplied 194-product catalog with NVIDIA image embeddings and NumPy cosine similarity. The HTML/CSS/JavaScript UI supports drag-and-drop, previews, direct image URLs, adjustable Top-K, loading/error states, and product cards with actual similarity scores. No database, CLIP, OpenAI SDK, synthetic catalog, frontend build system, or deployment is used.
+A FastAPI application that searches the supplied 194-product catalog with NVIDIA image embeddings and NumPy cosine similarity, locally or on Render. The HTML/CSS/JavaScript UI supports drag-and-drop, previews, direct image URLs, adjustable Top-K, loading/error states, and product cards with actual similarity scores. No database, CLIP, OpenAI SDK, synthetic catalog, or frontend build system is used.
+
+## Production deployment on Render
+
+The original deployment omitted the index because `.gitignore` excluded all of `artifacts/`. The existing, verified index is only 1,591,680 bytes across three files and is now included in ordinary Git (no Git LFS or external downloads needed):
+
+- `artifacts/embeddings.npy`: float32 `(194, 2048)` array, 1,589,376 bytes.
+- `artifacts/product_ids.npy`: int64 `(194,)` array, 1,680 bytes.
+- `artifacts/index.json`: recipe, catalog fingerprint, count and file checksums, 624 bytes.
+
+All other artifacts, query caches, local reports, and `.env` files remain ignored. **Do not run `test_nvidia.py` or `build_embeddings.py` during deployment.** The production build and startup validate the existing files entirely offline; indexing never requires API credentials. Only new search images require NVIDIA.
+
+For the existing `visual-search-1slj` service, use the repository's `main` branch with these native Python settings:
+
+```text
+Build command: python -m pip install -r requirements.txt && python validate_index.py
+Start command: python start_production.py
+Health check path: /health
+```
+
+Set `NVIDIA_API_KEY` and `VISUAL_SEARCH_API_KEY` as secret environment variables in Render. Do not upload `.env`, put keys in build commands, or commit them. Optional variables:
+
+| Variable | Production default / purpose |
+| --- | --- |
+| `UI_ORIGIN` | Defaults to Render's `RENDER_EXTERNAL_URL`; override only for the actual public origin/custom domain |
+| `PUBLIC_UI_ENABLED` | Defaults to `true` on Render, `false` locally; set `false` to disable remote browser access |
+| `VISUAL_SEARCH_INDEX_DIR` | Absolute or working-directory-relative override; default is project `artifacts/` |
+| `VISUAL_SEARCH_DATA_DIR` | Override for the catalog directory; default is project `data/` |
+| `VISUAL_SEARCH_CACHE_DIR` | Recommended `/tmp/visual-search-cache`; disposable query cache, separate from immutable index |
+| `PORT` | Supplied by Render; used by `start_production.py` |
+
+`render.yaml` supplies the native-runtime Blueprint configuration. Adding it does **not** automatically replace settings for an existing non-Blueprint service: update that service's settings, or manage it through a Blueprint. Do not create a second service accidentally. Existing native Uvicorn deployments also load the bundled files directly at API startup; the recommended build/start commands additionally fail early if packaging is broken.
+
+The optional `Dockerfile` uses Python 3.11, explicitly copies only the three index files, validates them at build time without secrets, runs as a non-root user, and keeps the runtime cache in `/tmp`. `.dockerignore` denies everything except application code, public catalog assets, requirements, and the index. Build with `docker build -t visual-search .`; Render's Docker runtime uses `python start_production.py` as its CMD. No persistent disk is required: every release includes its index; losing the query cache only means future queries may need new embeddings.
+
+The loader still checks the recipe/preprocessing version, canonical catalog fingerprint, SHA-256 checksums, dtype, count, dimensions, ID order, and finite/nonzero vectors. Fingerprints exclude machine-specific paths, so Windows-to-Linux relocation is supported. Missing/stale data is never silently accepted. `/health` returns HTTP 503 if the index or NVIDIA configuration is unavailable and reports the indexed count and Render commit revision, without revealing secrets. Detailed index failures are logged server-side. Render considers successful HTTP statuses healthy, so use `/health` to avoid promoting an unusable release ([Render health-check documentation](https://render.com/docs/health-checks)).
+
+Public browser search is intentionally available to visitors, as configured for this deployment. It requires an exact HTTPS origin/Host, a signed Secure + HttpOnly + SameSite=Strict cookie, a CSRF token, and rate limits (20 searches and 20 session creations per client per minute). The session signing key is derived server-side from the application API key, which never reaches JavaScript. Origin/CSRF checks prevent cross-site use; they are not a login or a billing cap. External `/search` routes still require `X-API-Key`. The production launcher uses one worker for consistent in-process rate limiting and trusts forwarded client addresses only when running behind Render's ingress. Add shared limiting before scaling to multiple instances.
+
+After redeployment, verify the actual service using the same application key in your local `.env`:
+
+```powershell
+python verify_deployment.py --health-only
+python verify_deployment.py
+```
+
+The second command checks all 194 products are loaded, a real authenticated image upload, a public image URL, rejection of unauthenticated API requests, Secure browser cookies, session/CSRF-protected browser search with Top-K 194, and rejection of cross-site requests. It writes `artifacts/deployment_verification.json` without credentials or session tokens. It may embed two search images, but never rebuilds the catalog. The offline suite now includes the original 39 tests plus 15 production regressions.
 
 ## Run locally in VS Code
 
@@ -94,7 +140,7 @@ Artifacts:
 | `artifacts/progress.json` | Completed count and last/failed product ID |
 | `artifacts/validation_report.json` | Dataset audit, missing values, duplicate groups |
 
-Array files use `allow_pickle=False` and atomic individual replacements. The manifest is published last. Startup rejects partial, stale, or corrupted arrays rather than returning misaligned products. After a failed rebuild, rerun the builder and restart the server. Credentials and all generated artifacts are excluded from version control.
+Array files use `allow_pickle=False` and atomic individual replacements. The manifest is published last. Startup rejects partial, stale, or corrupted arrays rather than returning misaligned products. After an intentional catalog rebuild, commit the three validated index files with the changed catalog and restart/redeploy. Credentials, caches and generated reports are excluded from version control; the three production index files are explicitly included.
 
 ## API
 
@@ -152,7 +198,7 @@ For URLs, use `httpx.post("http://127.0.0.1:8000/search/url", headers=headers, j
 
 ## Local UI and input safety
 
-The UI calls separate `/ui/search` and `/ui/search/url` adapters backed by the identical search function and NumPy engine. A loopback-only `/ui/session` issues a short-lived signed HttpOnly, SameSite=Strict cookie and session CSRF token. Browser search checks the actual client address, configured Host, exact Origin, cookie signature/expiry, and CSRF header. No secret application API key is sent to JavaScript. This is intentionally a **local trusted-user UI**, not a remotely authenticated multi-user service. Do not place it behind a public reverse proxy without adding user authentication and revisiting trust boundaries.
+The UI calls separate `/ui/search` and `/ui/search/url` adapters backed by the identical search function and NumPy engine. Locally, `/ui/session` is loopback-only. With public UI enabled, it accepts visitors only on the configured HTTPS origin and sets Secure cookies. Browser search checks the configured Host, exact Origin, cookie signature/expiry, and CSRF header; local mode additionally checks the actual loopback client address. No secret application API key is sent to JavaScript. Public mode is anonymous search, not a user-login system; see the production section for rate limiting and hosting assumptions.
 
 Uploads have a 5 MiB image limit, bounded request bodies, MIME and decoded-format checks, a 20-megapixel limit, decompression-bomb protection, and rejection of animated/SVG files. Product image serving is allowlisted by the validated catalog. Search is limited to 20 requests per client per minute per process.
 
