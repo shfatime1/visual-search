@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find products by visual similarity. Search the catalog with a photo or an image URL.">
+  <title>Forma — Visual Search</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="header"><a class="logo" href="/" aria-label="Forma home"><span class="logo-mark">f.</span>forma<span class="logo-divider"></span><span class="logo-caption">VISUAL SEARCH</span></a><div class="header-right"><span class="status"><i id="status-dot"></i><span id="status-text">Connecting</span></span><a href="/docs" target="_blank" rel="noopener">API docs <span aria-hidden="true">↗</span></a></div></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow"><span></span> A DIFFERENT WAY TO DISCOVER</p><h1>Less searching.<br>More <em>“that's it.”</em></h1><p class="intro-copy">Start with an image. Discover the closest matches<br class="desktop-break"> across the product collection.</p></div><div class="intro-note"><span class="orbit" aria-hidden="true">◎</span><p>A little inspiration.<br>A whole new perspective.</p><span>POWERED BY NVIDIA EMBEDDINGS</span></div></section>
+    <div class="workspace">
+      <aside class="search-panel" aria-label="Image search controls"><div class="panel-heading"><span class="step">01</span><h2>Your starting point</h2></div><div class="tabs" role="tablist" aria-label="Image source"><button type="button" id="upload-tab" role="tab" aria-selected="true" aria-controls="upload-panel" class="active">Upload image</button><button type="button" id="url-tab" role="tab" aria-selected="false" aria-controls="url-panel">Image URL</button></div>
+        <form id="search-form">
+          <div id="upload-panel" role="tabpanel" aria-labelledby="upload-tab"><label class="dropzone" id="dropzone" for="file"><input type="file" id="file" accept="image/jpeg,image/png,image/webp"><span id="upload-prompt"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m4 18 6-6 4 4 3-3 4 4"/></svg><strong>Drop your image here</strong><span>or <u>browse files</u></span><small>JPG, PNG, WEBP · UP TO 5 MB</small></span><img id="preview" alt="Your selected search image" hidden><span id="replace-hint" hidden>Click to change image</span></label><p class="file-name" id="file-name">A clear product photo works best.</p></div>
+          <div id="url-panel" role="tabpanel" aria-labelledby="url-tab" hidden><label for="image-url">Public image URL</label><input type="url" id="image-url" placeholder="https://example.com/image.jpg" maxlength="2048"><p class="url-hint">Paste a direct link to a JPG, PNG, or WebP image. The server securely retrieves your image.</p><div class="url-art" aria-hidden="true">↗</div></div>
+          <div class="top-k"><div><label for="top-k">Number of matches</label><small>Look a little closer. Or explore more.</small></div><input type="number" id="top-k" min="1" max="194" value="5" required></div>
+          <button class="search-button" id="search-button" type="submit"><span id="button-label">Find similar products</span><span id="button-icon" aria-hidden="true">↗</span></button>
+          <p id="error" role="alert" hidden></p>
+        </form>
+        <div class="examples"><p>Just exploring? Try an image <span>↓</span></p><div id="example-images"></div></div>
+        <div class="privacy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Images processed by NVIDIA. API keys stay on the server.</span></div>
+      </aside>
+      <section class="results-panel" aria-labelledby="results-title"><div class="results-header"><div><p class="eyebrow" id="results-eyebrow">THE COLLECTION</p><h2 id="results-title">A world of possibilities</h2></div><span class="count-badge" id="result-count">— products</span></div><div class="result-meta"><p id="results-description" aria-live="polite">A few things to spark your curiosity.</p><button type="button" id="reset-results" hidden>Back to collection ↗</button></div><div id="loading" role="status" hidden><span class="spinner"></span><p>Looking for visual connections…</p><small>Your image is being compared with the collection.</small></div><div class="product-grid" id="product-grid"></div><div id="empty" hidden><p>No products are available yet.</p><span>Check the dataset and restart the application.</span></div><p class="score-note" id="score-note" hidden>Scores are cosine similarities from −1 to 1, not confidence percentages. Higher means more similar in the model's embedding space.</p></section>
+    </div>
+    <section class="how-it-works"><span>FROM IMAGE TO INSPIRATION</span><p><b>01</b> Add an image</p><span class="connector">⟶</span><p><b>02</b> Compare visual embeddings</p><span class="connector">⟶</span><p><b>03</b> Discover the closest matches</p></section>
+  </main>
+  <footer><span>forma <span class="footer-dot">/</span> A new way to find.</span><span>REAL PRODUCTS. VISUAL CONNECTIONS.</span></footer>
+</body></html>
