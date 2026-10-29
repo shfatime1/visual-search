@@ -58,7 +58,7 @@ class NvidiaEmbedder:
 
     async def embed(self, image: bytes, force=False):
         key = cache_key(image)
-        path = self.settings.artifacts / "cache" / f"{key}.npy"
+        path = self.settings.embedding_cache_dir / f"{key}.npy"
         async with self.lock:
             self.cache_hit = False
             if path.exists() and not force:

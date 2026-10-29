@@ -1,0 +1,19 @@
+{
+  "recipe": {
+    "model": "nvidia/nemotron-3.5-embed-1b",
+    "input_type": "passage",
+    "modality": "image",
+    "encoding_format": "float",
+    "embedding_type": "float",
+    "dimensions": 2048,
+    "longest_edge": 1120,
+    "truncate": "NONE"
+  },
+  "cache_version": "jpeg92-white-exif-v1",
+  "catalog_fingerprint": "7e1b011687e73dd888720574d684f68528c9b3a34cf65f36b73aacf51bbc1448",
+  "count": 194,
+  "files": {
+    "embeddings.npy": "295a53fdbbe14a8f32155e017e35213e6f2e8dd79bc247fbc632b0dfdeadc820",
+    "product_ids.npy": "ce6c063427a39e41f5e12c5241f4ae4e92083383ac19bde75a8747dcca0b1ca8"
+  }
+}

@@ -1,0 +1,17 @@
+# Deny by default: credentials and cached user queries never enter the context.
+**
+!Dockerfile
+!requirements.txt
+!api.py
+!validate_index.py
+!start_production.py
+!visual_search/
+!visual_search/*.py
+!static/
+!static/**
+!data/
+!data/**
+!artifacts/
+!artifacts/index.json
+!artifacts/embeddings.npy
+!artifacts/product_ids.npy

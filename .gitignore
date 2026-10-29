@@ -3,5 +3,8 @@
 __pycache__/
 .pytest_cache/
 *.pyc
-artifacts/
+artifacts/*
+!artifacts/embeddings.npy
+!artifacts/product_ids.npy
+!artifacts/index.json
 *.log

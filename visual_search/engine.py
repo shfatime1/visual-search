@@ -37,6 +37,9 @@ class SearchEngine:
 
     @classmethod
     def load(cls, settings, products):
+        for name in ("index.json", "embeddings.npy", "product_ids.npy"):
+            if not (settings.artifacts / name).is_file():
+                raise ValueError(f"Missing bundled index file: {name}. Deploy the validated artifacts directory; NVIDIA reindexing is not required.")
         manifest = json.loads((settings.artifacts / "index.json").read_text())
         if manifest.get("recipe") != RECIPE or manifest.get("cache_version") != CACHE_VERSION or manifest.get("catalog_fingerprint") != fingerprint(products):
             raise ValueError("Index is stale. Run build_embeddings.py and restart the server.")
@@ -45,6 +48,9 @@ class SearchEngine:
                 raise ValueError("Index checksum mismatch. Rebuild the index.")
         ids = np.load(settings.artifacts / "product_ids.npy", allow_pickle=False)
         vectors = np.load(settings.artifacts / "embeddings.npy", allow_pickle=False)
-        if ids.tolist() != [p["id"] for p in products] or vectors.shape != (len(products), RECIPE["dimensions"]):
+        if (manifest.get("count") != len(products) or ids.dtype != np.dtype("int64")
+                or vectors.dtype != np.dtype("float32") or ids.ndim != 1
+                or ids.tolist() != [p["id"] for p in products]
+                or vectors.shape != (len(products), RECIPE["dimensions"])):
             raise ValueError("Index does not match the catalog.")
         return cls(products, vectors, ids)

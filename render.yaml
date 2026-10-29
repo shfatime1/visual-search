@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: visual-search
+    runtime: python
+    buildCommand: python -m pip install -r requirements.txt && python validate_index.py
+    startCommand: python start_production.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.14
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: VISUAL_SEARCH_API_KEY
+        sync: false
+      - key: PUBLIC_UI_ENABLED
+        value: "true"
+      - key: VISUAL_SEARCH_CACHE_DIR
+        value: /tmp/visual-search-cache

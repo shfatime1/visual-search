@@ -1,5 +1,7 @@
 import asyncio
 import hmac
+import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -50,7 +52,10 @@ def create_app(settings=None, engine=None, embedder=None):
             try:
                 app.state.engine = SearchEngine.load(settings, products)
             except (OSError, ValueError, KeyError, IndexError) as exc:
-                app.state.index_error = "Index unavailable or stale. Run test_nvidia.py, build_embeddings.py, then restart."
+                logging.getLogger(__name__).error("Index load failed from %s: %s", settings.artifacts, exc)
+                app.state.index_error = "Product index unavailable. Deploy the validated bundled index and run validate_index.py; check server logs for the exact validation failure."
+            else:
+                logging.getLogger("uvicorn.error").info("Loaded %d product embeddings from %s", len(products), settings.artifacts)
         app.state.embedder = embedder or NvidiaEmbedder(settings)
         yield
 
@@ -94,10 +99,15 @@ def create_app(settings=None, engine=None, embedder=None):
     async def health():
         count = len(app.state.engine.products) if app.state.engine else 0
         ready = count > 0 and bool(settings.nvidia_key)
-        return {"status": "ok" if ready else "not_ready", "indexed_products": count,
+        detail = app.state.index_error
+        if not detail and not settings.nvidia_key:
+            detail = "Configure NVIDIA_API_KEY in the server environment to embed search images."
+        payload = {"status": "ok" if ready else "not_ready", "indexed_products": count,
                 "catalog_products": len(app.state.products), "model": MODEL,
                 "nvidia_configured": bool(settings.nvidia_key), "external_api_configured": bool(settings.api_key),
-                "detail": app.state.index_error}
+                "public_ui_enabled": settings.public_ui, "revision": os.getenv("RENDER_GIT_COMMIT", "local"),
+                "detail": detail}
+        return JSONResponse(payload, status_code=200 if ready else 503)
 
     @app.get("/products", response_model=list[Product])
     async def products(offset: int = Query(0, ge=0), limit: int = Query(194, ge=1, le=1000)):
